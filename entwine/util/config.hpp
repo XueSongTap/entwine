@@ -41,7 +41,7 @@ namespace config
 Endpoints getEndpoints(const json& j);
 Metadata getMetadata(const json& j);
 
-arbiter::Arbiter getArbiter(const json& j);
+std::shared_ptr<arbiter::Arbiter> getArbiter(const json& j);
 StringList getInput(const json& j);
 std::string getOutput(const json& j);
 std::string getTmp(const json& j);

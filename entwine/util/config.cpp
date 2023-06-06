@@ -44,7 +44,7 @@ BuildParameters getBuildParameters(const json& j)
 
 Endpoints getEndpoints(const json& j)
 {
-    const auto arbiter = std::make_shared<arbiter::Arbiter>(getArbiter(j));
+    const auto arbiter = getArbiter(j);
     const auto output = getOutput(j);
     const auto tmp = getTmp(j);
 
@@ -68,9 +68,10 @@ Metadata getMetadata(const json& j)
         getBuildParameters(j));
 }
 
-arbiter::Arbiter getArbiter(const json& j)
+std::shared_ptr<arbiter::Arbiter> getArbiter(const json& j)
 {
-    return arbiter::Arbiter(j.value("arbiter", json()).dump());
+    return std::make_shared<arbiter::Arbiter>(
+        j.value("arbiter", json()).dump());
 }
 StringList getInput(const json& j)
 {

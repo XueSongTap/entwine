@@ -1,0 +1,10 @@
+name: entwine-build
+channels:
+  - conda-forge
+dependencies:
+  - pdal
+  - compilers
+  - ninja
+  - cmake
+  - pkg-config
+  - make
