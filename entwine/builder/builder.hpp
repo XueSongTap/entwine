@@ -55,10 +55,10 @@ struct Builder
         ChunkCache& cache,
         uint64_t origin,
         std::atomic_uint64_t& counter);
-    void save(unsigned threads);
+    void save(unsigned threads, bool saveDetailedSources = true);
 
     void saveHierarchy(unsigned threads);
-    void saveSources(unsigned threads);
+    void saveSources(unsigned threads, bool saveDetailedSources);
     void saveMetadata();
 
     Endpoints endpoints;

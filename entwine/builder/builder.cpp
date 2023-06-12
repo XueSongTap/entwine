@@ -301,11 +301,11 @@ void Builder::insert(
     }
 }
 
-void Builder::save(const unsigned threads)
+void Builder::save(const unsigned threads, const bool saveDetailedSources)
 {
     if (verbose) std::cout << "Saving" << std::endl;
     saveHierarchy(threads);
-    saveSources(threads);
+    saveSources(threads, saveDetailedSources);
     saveMetadata();
 }
 
@@ -335,35 +335,33 @@ void Builder::saveHierarchy(const unsigned threads)
         getPostfix(metadata));
 }
 
-void Builder::saveSources(const unsigned threads)
+void Builder::saveSources(
+    const unsigned threads,
+    const bool saveDetailedSources)
 {
     const std::string postfix = getPostfix(metadata);
     const std::string manifestFilename = "manifest" + postfix + ".json";
     const bool pretty = manifest.size() <= 1000;
 
+    manifest = assignMetadataPaths(manifest);
+
+    ensurePut(
+        endpoints.sources,
+        manifestFilename,
+        toOverview(manifest /*, !!metadata.subset */).dump(getIndent(pretty)));
+
+    if (!saveDetailedSources) return;
+    if (metadata.subset && metadata.subset->id != 1) return;
+
+    auto toSave = manifest;
     if (metadata.subset)
     {
-        // If we are a subset, write the whole detailed metadata as one giant
-        // blob, since we know we're going to need to wake up the whole thing to
-        // do the merge.
-        ensurePut(
-            endpoints.sources,
-            manifestFilename,
-            json(manifest).dump(getIndent(pretty)));
+        for (auto& entry : toSave)
+        {
+            entry.source.info.schema = clearStats(entry.source.info.schema);
+        }
     }
-    else
-    {
-        // Save individual per-file metadata.
-        manifest = assignMetadataPaths(manifest);
-        saveEach(manifest, endpoints.sources, threads, pretty);
-
-        // And in this case, we'll only write an overview for the manifest
-        // itself, which excludes things like detailed metadata.
-        ensurePut(
-            endpoints.sources,
-            manifestFilename,
-            toOverview(manifest).dump(getIndent(pretty)));
-    }
+    saveEach(toSave, endpoints.sources, threads, pretty);
 }
 
 void Builder::saveMetadata()
@@ -371,7 +369,7 @@ void Builder::saveMetadata()
     // If we've gained dimension stats during our build, accumulate them and
     // add them to our main metadata.
     const auto pred = [](const BuildItem& b) { return hasStats(b); };
-    if (!metadata.subset && std::all_of(manifest.begin(), manifest.end(), pred))
+    if (std::all_of(manifest.begin(), manifest.end(), pred))
     {
         Schema schema = clearStats(metadata.schema);
 
@@ -574,7 +572,7 @@ void merge(
     pool.join();
     cache.join();
 
-    builder.save(threads);
+    builder.save(threads, false);
     if (verbose) std::cout << "Done" << std::endl;
 }
 
