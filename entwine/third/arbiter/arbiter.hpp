@@ -1,7 +1,7 @@
 /// Arbiter amalgamated header (https://github.com/connormanning/arbiter).
 /// It is intended to be used with #include "arbiter.hpp"
 
-// Git SHA: 8e496b2628b54944d462080ffa35aa054a9201ff
+// Git SHA: 668609ea6846d8e266579018b783e63dec2f690e
 
 // //////////////////////////////////////////////////////////////////////
 // Beginning of content of file: LICENSE
