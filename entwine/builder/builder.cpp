@@ -303,6 +303,14 @@ void Builder::insert(
 
 void Builder::save(const unsigned threads, const bool saveDetailedSources)
 {
+    if (metadata.subset)
+    {
+        for (auto& entry : manifest)
+        {
+            entry.source.info.schema = clearStats(entry.source.info.schema);
+        }
+        metadata.schema = clearStats(metadata.schema);
+    }
     if (verbose) std::cout << "Saving" << std::endl;
     saveHierarchy(threads);
     saveSources(threads, saveDetailedSources);
@@ -368,7 +376,11 @@ void Builder::saveMetadata()
 {
     // If we've gained dimension stats during our build, accumulate them and
     // add them to our main metadata.
-    const auto pred = [](const BuildItem& b) { return hasStats(b); };
+    const auto pred = [](const BuildItem& b)
+    {
+        return b.source.info.schema.size() > 0 && hasStats(b);
+    };
+
     if (std::all_of(manifest.begin(), manifest.end(), pred))
     {
         Schema schema = clearStats(metadata.schema);
@@ -536,7 +548,6 @@ void merge(
     if (verbose) std::cout << "Merging" << std::endl;
 
     Pool pool(threads);
-    std::mutex mutex;
 
     for (unsigned id = 1; id <= of; ++id)
     {
@@ -550,8 +561,7 @@ void merge(
                 verbose,
                 id,
                 &builder,
-                &cache,
-                &mutex]()
+                &cache]()
             {
                 Builder current = builder::load(
                     endpoints,
@@ -559,11 +569,6 @@ void merge(
                     id,
                     verbose);
                 builder::mergeOne(builder, current, cache);
-
-                std::lock_guard<std::mutex> lock(mutex);
-                builder.manifest = manifest::merge(
-                    builder.manifest,
-                    current.manifest);
             });
         }
         else if (verbose) std::cout << "skipping" << std::endl;

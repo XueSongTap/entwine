@@ -251,8 +251,8 @@ Manifest manifest::load(
     Manifest manifest =
         json::parse(ensureGet(ep, "manifest" + postfix + ".json"));
 
-    // Don't wake up per-source-file details if we're a non-root subset.
-    if (postfix.size() && postfix != "-1") return manifest;
+    // Don't wake up per-source-file details if we're a subset.
+    if (postfix.size()) return manifest;
 
     Pool pool(threads);
     for (auto& entry : manifest)
