@@ -1555,7 +1555,6 @@ void Http::post(
 
     if (!res.ok())
     {
-        std::cout << res.str() << std::endl;
         throw ArbiterError("Couldn't HTTP POST to " + path);
     }
 }
