@@ -42,7 +42,20 @@ Builder::Builder(
     , hierarchy(hierarchy)
     , verbose(verbose)
 { }
+/*
+这段代码是 Builder 结构体中的 run 方法的实现。该方法接受 Threads 对象、限制数 limit 和进度间隔 progressInterval 作为参数，并返回一个 uint64_t 类型的值。
 
+以下是该方法的解释：
+创建一个 Pool 对象 pool，并指定线程数为 2。Pool 是一个线程池，用于管理并发执行的任务。
+创建一个 std::atomic_uint64_t 类型的计数器 counter，用于记录已处理的任务数量，初始值为 0。
+创建一个 std::atomic_bool 类型的标志变量 done，用于表示任务是否完成，初始值为 false。
+向线程池中添加两个任务：
+第一个任务是调用 monitor 方法，传递进度间隔、计数器和完成标志等参数。该任务用于监视构建器的进度。
+第二个任务是调用 runInserts 方法，传递线程数、限制数和计数器等参数。该任务用于运行插入操作，并在完成后将 done 标志设置为 true。
+等待线程池中的所有任务执行完成。
+返回计数器的值，表示已处理的任务数量。
+这段代码使用了线程池来并发执行两个任务，一个用于监视进度，另一个用于运行插入操作。通过使用原子类型的计数器和标志变量，可以在多线程环境下安全地进行状态更新和同步操作。
+*/
 uint64_t Builder::run(
     const Threads threads,
     const uint64_t limit,
@@ -59,7 +72,28 @@ uint64_t Builder::run(
 
     return counter;
 }
+/*
+这段代码是 Builder 结构体中的 runInserts 方法的实现。该方法接受 Threads 对象、限制数 limit 和计数器 counter 作为参数。
 
+以下是该方法的解释：
+
+根据元数据 metadata 中的子集信息和边界信息，计算出活动边界 active。如果存在子集信息，则将活动边界限制在子集边界内。
+根据线程数 threads.work 和数据集大小 manifest.size()，计算出实际工作线程数 actualWorkThreads。如果工作线程数超过数据集大小，则将其限制为数据集大小。
+计算被窃取的线程数 stolenThreads，即额外的工作线程数减去实际工作线程数。
+根据剪裁线程数 threads.clip 和被窃取的线程数，计算出实际剪裁线程数 actualClipThreads。
+创建一个 ChunkCache 对象 cache，用于缓存数据块，传递构建器的一些属性。
+创建一个线程池 pool，线程数为实际工作线程数和数据集大小中的较小值。
+初始化一个变量 filesInserted，用于记录已插入的文件数量，初始值为 0。
+使用循环遍历数据集中的每个元素：
+获取当前元素的信息，并检查是否已插入且具有点数据且与活动边界有重叠。
+如果满足条件，则向线程池中添加一个任务，该任务调用 tryInsert 方法，传递缓存、起始位置和计数器等参数，并在插入完成后输出完成信息。
+增加已插入文件数量。
+如果设置了输出详细信息标志 verbose，则输出 "Joining"。
+等待线程池中的所有任务执行完成。
+等待缓存中的所有数据块写入磁盘。
+调用 save 方法，传递总线程数作为参数，保存数据。
+这段代码使用了线程池来并发执行插入操作。它遍历数据集中的每个元素，并根据条件决定是否插入数据。通过使用线程池和缓存对象，可以实现并发插入操作，并提高处理效率。最后，调用 save 方法保存数据。
+*/
 void Builder::runInserts(
     Threads threads,
     uint64_t limit,
@@ -114,7 +148,29 @@ void Builder::runInserts(
 
     save(getTotal(threads));
 }
+/*
+这段代码是 `Builder` 结构体中的 `monitor` 方法的实现。该方法用于监视构建器的进度，并在指定的进度间隔内输出进度信息。
 
+以下是该方法的解释：
+
+1. 如果进度间隔 `progressInterval` 为 0，则直接返回，不进行监视。
+2. 定义一个别名 `ms`，表示 `std::chrono::milliseconds`。
+3. 计算数据集中已插入点的数量 `already` 和总点数量 `total`。
+4. 获取当前时间 `start`。
+5. 初始化变量 `lastTick` 和 `lastInserted`，用于记录上次输出进度信息的时间和已插入的点数量。
+6. 在循环中，当 `done` 标志为 false 时执行以下操作：
+   - 计算距离上次输出进度信息的时间间隔 `tick`，并等待剩余的秒数。
+   - 如果当前时间与上次输出进度信息的时间相同，或者时间间隔不是进度间隔的倍数，则继续下一次循环。
+   - 更新 `lastTick` 为当前时间。
+   - 计算当前已处理的点数量 `current` 和已插入的点数量 `inserted`。
+   - 计算进度 `progress`，即已插入点数量占总点数量的比例。
+   - 计算每小时的处理速度 `pace` 和进度间隔内的速度 `intervalPace`。
+   - 更新 `lastInserted` 为当前已插入的点数量。
+   - 获取缓存对象的信息 `info`。
+   - 如果设置了输出详细信息标志 `verbose`，则输出当前时间、进度、已插入点数量、每小时速度、进度间隔速度以及缓存信息。
+
+这段代码在循环中通过计算时间间隔和已处理的点数量来输出构建器的进度信息。通过使用睡眠函数 `std::this_thread::sleep_for` 和时间计算函数 `since`，可以控制输出的时间间隔。输出的信息包括已插入点的数量、处理速度以及缓存信息等。
+*/
 void Builder::monitor(
     const uint64_t progressInterval,
     std::atomic_uint64_t& atomicCurrent,
@@ -167,7 +223,19 @@ void Builder::monitor(
         }
     }
 }
+/*
+这段代码是 `Builder` 结构体中的 `tryInsert` 方法的实现。该方法用于尝试插入数据，并在插入过程中捕获异常，记录错误信息，并将插入标志设置为 true。
 
+以下是该方法的解释：
+
+1. 从数据集中获取指定 `originId` 的元素信息，并存储在引用变量 `item` 中。
+2. 尝试调用 `insert` 方法，传递缓存对象、`originId` 和计数器等参数，进行数据插入操作。
+3. 如果捕获到 `std::exception` 类型的异常，将异常信息添加到元素的源信息的错误列表中。
+4. 如果捕获到其他类型的异常，将默认的错误信息 "Unknown error during build" 添加到元素的源信息的错误列表中。
+5. 将元素的插入标志设置为 true，表示已经插入完成。
+
+这段代码通过调用 `insert` 方法来尝试插入数据，并捕获可能抛出的异常。如果捕获到异常，将错误信息添加到元素的源信息中。最后，将插入标志设置为 true，表示已经完成插入操作。
+*/
 void Builder::tryInsert(
     ChunkCache& cache,
     const Origin originId,
@@ -190,7 +258,36 @@ void Builder::tryInsert(
 
     item.inserted = true;
 }
+/*
+这段代码是 `Builder` 结构体中的 `insert` 方法的实现。该方法用于将数据插入到 `ChunkCache` 中，并执行一系列的处理和过滤操作。
 
+以下是该方法的解释：
+
+1. 从数据集中获取指定 `originId` 的元素信息，并存储在引用变量 `item` 中。同时获取元素的源信息。
+2. 调用 `ensureGetLocalHandle` 方法，传递仲裁器和元素的路径，获取本地处理句柄。
+3. 获取本地路径 `localPath`。
+4. 根据元数据的边界和起始深度创建 `ChunkKey` 对象 `ck`。
+5. 创建 `Clipper` 对象 `clipper`，传递缓存对象。
+6. 获取元数据的比例和偏移信息 `so`。
+7. 根据元数据的子集信息，获取边界的子集 `boundsSubset`。
+8. 初始化已插入的点数量 `inserted` 和点的唯一标识符 `pointId`。
+9. 根据元数据的绝对模式创建点表的布局 `layout`。
+10. 创建 `VectorPointTable` 对象 `table`，传递布局。
+11. 设置点表的处理函数，用于处理每个点的操作。在处理过程中，更新已插入的点数量，并根据一定的规则执行 `Clipper` 的剪裁操作。
+12. 创建 `Key` 对象 `key`，用于存储点的键信息。
+13. 遍历点表中的每个点，设置点的原始标识符和点的唯一标识符，初始化 `Voxel` 对象并进行剪裁操作，然后根据点的位置初始化 `ChunkKey`，并将点插入到缓存对象中。
+14. 更新计数器 `counter`。
+15. 根据源信息中的管道配置，创建 JSON 对象 `pipeline`。
+16. 如果需要统计信息（即源信息的模式中没有统计信息），则向管道中添加统计过滤器。
+17. 创建 `PipelineManager` 对象 `pm`，并将管道配置加载到 `pm` 中。
+18. 获取 `PdalMutex` 的互斥锁，以保证多线程环境下的安全操作。
+19. 读取管道配置并验证阶段选项。
+20. 获取管道的最后一个阶段，并为该阶段准备点表。
+21. 执行管道，对点表进行处理和过滤操作。
+22. 如果存在统计过滤器，将统计信息更新到元数据的模式中。
+
+这段代码实现了将数据插入到缓存中，并执行了一系列的处理和过滤操作。它使用了 PDAL 库来处理点云数据，并根据配置的管道对数据进行处理和过滤。最后，将统计信息更新到元数据的模式中。
+*/
 void Builder::insert(
     ChunkCache& cache,
     const Origin originId,
