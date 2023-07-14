@@ -521,6 +521,33 @@ Builder load(
     return Builder(endpoints, metadata, manifest, hierarchy);
 }
 
+/*
+这段代码是用于创建一个 Builder 对象的工厂方法。主要功能包括:
+
+1. 从配置中解析参数,如 verbose、endpoints、threads 等
+
+2. 检查输出目录是否已存在 build,如果存在则加载存在的 manifest 和 hierarchy
+
+3. 解析输入数据源,移除 manifest 中已存在的,剩下的进行 analyze 
+
+4. analyze 得到的新 source 信息添加到 manifest
+
+5. 将 analyze 得到的 source 信息与配置进行 merge,配置优先级更高
+
+6. 从配置中获取 metadata 信息
+
+7. 使用解析得到的各种信息实例化一个 Builder 对象并返回
+
+所以这段代码主要工作是:
+
+- 解析配置
+- 检查是否有存在的 build 信息并加载
+- 分析输入数据源 
+- 与存在信息合并
+- 创建 Builder
+
+它实现了增量建模的功能,可以对新增的数据进行分析和 merge,从而避免全量重建。
+*/
 Builder create(json j)
 {
     const bool verbose = config::getVerbose(j);

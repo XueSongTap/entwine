@@ -11,7 +11,33 @@
 #include <entwine/builder/chunk-cache.hpp>
 
 #include <entwine/builder/clipper.hpp>
+/*
+这段代码实现了 Entwine 中的 Chunk 缓存逻辑,主要功能如下:
 
+1. insert方法用于向缓存中插入一个点。它会先尝试从单线程缓存中获取 Chunk,如果不存在才创建。获取时需要增加引用计数。如果插入失败则向下一层遍历。
+
+2. addRef 方法用于增加 Chunk 的引用计数。它会先获取锁,然后在缓存中查找 Chunk。如果找到则直接增加计数,如果不存在则创建 Chunk 并加载数据。
+
+3. clip 方法用于移除已被裁剪的 Chunk。它会减少引用计数,如果计数为0则加入 owned 列表准备删除。
+
+4. maybePurge 方法用于释放 owned 中不需要的 Chunk。它会减少引用计数,如果减为0则将 Chunk 加入序列化队列。
+
+5. maybeSerialize 方法用于异步序列化 Chunk。它会保存 Chunk 数据并更新 hierarchy。
+
+6. maybeErase 方法用于删除不需要的 Chunk。它需要获取两把锁确保可以安全删除。
+
+主要的设计点包括:
+
+- 使用 SpinLock 和 UniqueSpin 进行细粒度加锁
+
+- 引用计数管理 Chunk 的生命周期
+
+- 拆分缓存为单线程缓存和共享缓存
+
+- 异步序列化与删除来避免锁争用
+
+所以这是一段非常典型的高性能缓存实现代码。
+*/
 namespace entwine
 {
 

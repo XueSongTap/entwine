@@ -15,7 +15,30 @@
 #include <entwine/types/metadata.hpp>
 #include <entwine/types/voxel.hpp>
 #include <entwine/util/unique.hpp>
+/*
+这段代码实现了 Entwine 中 Chunk 类的具体逻辑,主要功能如下:
 
+1. insert 方法用于向当前 Chunk 插入一个点。它会先尝试插入到 m_grid 中,如果失败则插入到溢出数据中。如果溢出数据量超过阈值则会触发 overflow。
+
+2. insertOverflow 方法用于向溢出数据插入一个点。它会获取锁并插入,如果溢出数据超过阈值则触发 overflow。
+
+3. maybeOverflow 方法用于检查是否需要 overflow。它会统计总数据量,如果超过最大节点大小则会找出最大的溢出数据并触发 overflow。
+
+4. doOverflow 方法用于实际的 overflow 操作。它会将最大的溢出数据移动到新的 Chunk 中,并逐个重新插入点。
+
+5. save 方法用于序列化当前 Chunk。它会统计点数,生成 BlockPointTable,并写入文件。
+
+6. load 方法用于从文件加载 Chunk 数据。它会申请空间,并用插入到缓存的方式逐点加载。
+
+主要的设计如下:
+
+- 使用 m_grid 作为主数据存储,m_overflows 存储溢出数据
+- 通过 spin lock 进行并发控制
+- 溢出数据量达到阈值时触发 overflow 生成子节点
+- Chunk 数据是懒加载的,只有访问时才从文件读取
+
+所以这实现了典型的四叉树索引的 Chunk 节点逻辑。
+*/
 namespace entwine
 {
 

@@ -14,7 +14,47 @@
 
 #include <pdal/io/LasReader.hpp>
 #include <pdal/io/LasHeader.hpp>
+/*
+这两个文件定义了 Entwine 中与 PDAL 管道处理相关的工具函数,主要功能:
 
+pipeline.cpp:
+
+- findStage:在 JSON 管道中查找指定 stage 
+
+- findOrAppendStage:查找或追加指定 stage
+
+- omitStage:从管道中省略指定 stage
+
+- getStage:从 PDAL 管道中获取 stage
+
+- getReader:获取管道第一个 reader 
+
+- getFirst:获取管道第一个 stage
+
+- getMetadata:获取 reader 的元数据
+
+- getScaleOffset:获取 reader 的缩放偏移信息
+
+pipeline.hpp:
+
+- 定义相关函数
+
+主要功能是封装了管道处理的常用功能:
+
+- 在 JSON 管道中查找和修改 stage
+
+- 从 PDAL 管道获取特定 stage 
+
+- 获取 reader 信息
+
+- 元数据和缩放偏移信息
+
+这样可以方便地对管道进行查询和修改,减少重复代码。
+
+getMetadata 和 getScaleOffset 也提供了获取重要管道信息的接口。
+
+所以这些函数简化了管道处理流程,避免各处重复提取管道信息的逻辑。
+*/
 namespace entwine
 {
 
